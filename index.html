@@ -45,6 +45,20 @@
         // 页面加载时显示欢迎语
         addMessage('ai', '你好！我是知问，你的智能知识库助手。请先上传文档，然后就可以向我提问了。');
 
+        // 页面加载时获取历史对话
+        async function loadHistory() {
+            const resp = await fetch('/history');
+            const messages = await resp.json();
+            if (messages.length === 0) {
+                addMessage('ai', '你好！我是知问，你的智能知识库助手。请先上传文档，然后就可以向我提问了。');
+                return;
+            }
+            for (const msg of messages) {
+                addMessage(msg.role, msg.content);
+            }
+        }
+        loadHistory();
+
         // 文件上传
         uploadInput.onchange = async function() {
             const file = uploadInput.files[0];

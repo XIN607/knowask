@@ -80,7 +80,8 @@ def hybrid_search_with_rerank(query,top_k=3,candidate_num=10):
             "score":r["relevance_score"],
             "heading":original["heading"],
             "content":original["content"],
-            "idx":original["idx"]
+            "idx":original["idx"],
+            "source":original.get("source","未知来源")
         })
     return results
 
