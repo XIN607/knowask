@@ -117,3 +117,8 @@ async def get_history():
     rows = c.fetchall()
     conn.close()
     return [{"role": r[0], "content": r[1], "time": r[2]} for r in rows]
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)

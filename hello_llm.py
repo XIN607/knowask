@@ -26,32 +26,3 @@ for chunk in response:
     if chunk.choices and chunk.choices[0].delta.content:
         print(chunk.choices[0].delta.content,end="",flush=True)
 print()  #最后换行
-
-
-
-
-
-
-# from openai import OpenAI
-
-# # 1. 创建客户端：告诉 SDK 我们要调用哪个平台的模型
-# client = OpenAI(
-#     api_key="sk-323b0d075e73440ea3adf071e7a90a4a",          # ← 替换成你的 sk- 开头的 Key
-#     base_url="https://api.deepseek.com/v1"
-# )
-
-# # 2. 发起对话请求：stream=True 表示流式输出（一个字一个字吐出来）
-# response = client.chat.completions.create(
-#     model="deepseek-chat",
-#     messages=[
-#         {"role": "user", "content": "你好，请用一句话介绍你自己。"}
-#     ],
-#     stream=True
-# )
-
-# # 3. 逐段接收模型的回复并打印
-# print("模型回复：", end="", flush=True)
-# for chunk in response:
-#     if chunk.choices and chunk.choices[0].delta.content:
-#         print(chunk.choices[0].delta.content, end="", flush=True)
-# print()  # 最后换行

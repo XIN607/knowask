@@ -1,6 +1,6 @@
-# 知问 KnowAsk - 基于 RAG + Agent 的智能知识库问答系统
+# 知问 KnowAsk - 基于 RAG 的智能知识库问答系统
 
-一个完整的企业级知识库问答系统，支持文档上传、混合检索、Rerank 精排、流式对话。
+一个基于 RAG 的知识库问答系统（个人全栈实践项目），支持文档上传、混合检索、Rerank 精排、流式对话。
 
 ## 功能特性
 
@@ -10,7 +10,7 @@
 - 🎯 **Rerank 精排**：使用 Rerank 模型对粗排结果重新排序，提升检索准确率
 - 💬 **流式对话**：SSE 流式输出，打字机效果，体验媲美 ChatGPT
 - 🛡️ **防幻觉**：Prompt 约束，资料中没有的内容 AI 不会编造
-- 📚 **引用溯源**：回答附带参考来源，可追溯到原文片段
+- 📚 **引用溯源**：命令行问答输出参考来源（标题路径 + 相关性分数），可追溯原文片段
 - 🌐 **Web 界面**：前后端分离，提供 RESTful API + 简洁聊天页面
 
 ## 技术栈
@@ -74,7 +74,7 @@ python -m venv venv
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
 
 # 4. 配置环境变量
-复制 .env.example 为 .env，填入你的 API Key
+在项目根目录创建 .env 文件，填入 API Key（代码读取的环境变量：LLM_API_KEY、LLM_BASE_URL、LLM_MODEL、EMBEDDING_API_KEY、EMBEDDING_BASE_URL、EMBEDDING_MODEL）
 
 # 5. 启动服务
 .\venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000
