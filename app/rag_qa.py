@@ -1,7 +1,7 @@
 import os 
 from dotenv import load_dotenv
 from openai import OpenAI
-from hybrid_retriever import hybrid_search_with_rerank
+from .hybrid_retriever import hybrid_search_with_rerank
 
 load_dotenv()
 

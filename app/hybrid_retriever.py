@@ -1,14 +1,15 @@
 import json 
 import faiss
 import numpy as np
-from retriever import get_embedding
-from bm25_retriever import bm25_search
-from rerank import rerank
+from .retriever import get_embedding
+from .bm25_retriever import bm25_search
+from .rerank import rerank
+from .config import FAISS_INDEX_PATH, CHUNKS_META_PATH
 
 _index = None
 _meta = None
 
-def load_index_and_meta(index_path="faiss_index.bin",meta_path="chunks_meta.json"):
+def load_index_and_meta(index_path=FAISS_INDEX_PATH, meta_path=CHUNKS_META_PATH):
     global _index,_meta
     if _index is None:
         _index = faiss.read_index(index_path)

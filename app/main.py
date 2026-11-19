@@ -2,16 +2,15 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import os
-from dotenv import load_dotenv
 from openai import OpenAI
 from fastapi.responses import FileResponse
 import sqlite3
 from datetime import datetime
 
+from .config import UPLOAD_DIR, INDEX_HTML, CHAT_HISTORY_DB
+
 
 app = FastAPI(title="知问 KnowAsk API", version="1.0")
-UPLOAD_DIR = "uploads"
-load_dotenv()
 
 llm_client = OpenAI(
     api_key=os.getenv("LLM_API_KEY"),
@@ -20,7 +19,7 @@ llm_client = OpenAI(
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def init_db():
-    conn = sqlite3.connect("chat_history.db")
+    conn = sqlite3.connect(CHAT_HISTORY_DB)
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS messages (
@@ -41,7 +40,7 @@ async def health_check():
     return {"status": "ok", "message": "知问服务运行中"}
 @app.get("/")
 async def read_root():
-    return FileResponse("index.html")
+    return FileResponse(INDEX_HTML)
 
 
 @app.post("/upload")
@@ -53,7 +52,7 @@ async def upload_file(file: UploadFile = File(...)):
         f.write(content)
 
     # 2. 调用入库流程：解析 → 切分 → 向量化 → 建索引
-    from vector_store import build_index
+    from .vector_store import build_index
     build_index(file_path)
 
     # 3. 返回结果
@@ -68,7 +67,7 @@ class QuestionRequest(BaseModel):
 
 @app.post("/chat")
 async def chat(request: QuestionRequest):
-    from hybrid_retriever import hybrid_search_with_rerank
+    from .hybrid_retriever import hybrid_search_with_rerank
 
     contexts = hybrid_search_with_rerank(request.question, top_k=3)
 
@@ -78,7 +77,7 @@ async def chat(request: QuestionRequest):
     prompt += f"用户问题：{request.question}\n\n回答："
 
     # 先把用户问题存进数据库
-    conn = sqlite3.connect("chat_history.db")
+    conn = sqlite3.connect(CHAT_HISTORY_DB)
     c = conn.cursor()
     c.execute("INSERT INTO messages (role, content) VALUES (?, ?)", ("user", request.question))
     conn.commit()
@@ -100,7 +99,7 @@ async def chat(request: QuestionRequest):
                 yield f"data: {content}\n\n"
 
         # 流式输出完后，把 AI 回答存进数据库
-        conn = sqlite3.connect("chat_history.db")
+        conn = sqlite3.connect(CHAT_HISTORY_DB)
         c = conn.cursor()
         c.execute("INSERT INTO messages (role, content) VALUES (?, ?)", ("ai", full_answer))
         conn.commit()
@@ -111,7 +110,7 @@ async def chat(request: QuestionRequest):
 
 @app.get("/history")
 async def get_history():
-    conn = sqlite3.connect("chat_history.db")
+    conn = sqlite3.connect(CHAT_HISTORY_DB)
     c = conn.cursor()
     c.execute("SELECT role, content, created_at FROM messages ORDER BY id ASC")
     rows = c.fetchall()

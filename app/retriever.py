@@ -2,10 +2,8 @@ import os
 import json
 import numpy as np
 import faiss
-from dotenv import load_dotenv
 from openai import OpenAI
-
-load_dotenv()
+from .config import FAISS_INDEX_PATH, CHUNKS_META_PATH
 
 # 智谱 Embedding 客户端（和 vector_store.py 里一样）
 embedding_client = OpenAI(
@@ -23,7 +21,7 @@ def get_embedding(text):
     )
     return response.data[0].embedding
 
-def search(query,index_path="faiss_index.bin",meta_path="chunks_meta.json",top_k=3):
+def search(query, index_path=FAISS_INDEX_PATH, meta_path=CHUNKS_META_PATH, top_k=3):
     """
     请输入一个问题，返回最相关的 top_k 个文档片段
     """

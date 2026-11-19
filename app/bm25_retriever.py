@@ -1,5 +1,6 @@
 import jieba
 from rank_bm25 import BM25Okapi
+from .config import CHUNKS_META_PATH
 
 def tokenize(text):
     """中文分词：把一段文字切成词语列表"""
@@ -44,7 +45,7 @@ def bm25_search(query,chunks,top_k=3):
 
 if __name__=="__main__":
     import json
-    with open("chunks_meta.json","r",encoding="utf-8") as f:
+    with open(CHUNKS_META_PATH, "r", encoding="utf-8") as f:
         chunks = json.load(f)
 
     query = "RAG是什么"

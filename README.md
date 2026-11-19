@@ -51,6 +51,34 @@
 └─────────────────────────────────────────┘
 
 
+## 项目结构
+
+```text
+knowask/
+├── app/                        # 后端源码
+│   ├── config.py               # 路径与 .env 集中管理
+│   ├── main.py                 # FastAPI 入口（上传 / 问答 / 历史接口）
+│   ├── parse_doc.py            # PDF / Word / Markdown 解析
+│   ├── chunker.py              # 标题感知 + 滑动窗口切分
+│   ├── vector_store.py         # 向量化入库（FAISS）
+│   ├── retriever.py            # 向量检索
+│   ├── bm25_retriever.py       # BM25 关键词检索
+│   ├── hybrid_retriever.py     # 双路检索 + RRF 融合 + Rerank 精排
+│   ├── rerank.py               # Rerank 精排
+│   └── rag_qa.py               # CLI 问答入口
+├── scripts/                    # 独立演示脚本（chat / hello_llm / test_rerank）
+├── tests/                      # 评测脚本与测试用例
+│   ├── eval.py                 # 检索命中率评测
+│   └── fixtures/               # 测试文档
+├── static/index.html           # 前端页面（SSE 流式渲染）
+├── data/                       # 运行时生成：向量索引 / 元数据 / 对话历史
+├── uploads/                    # 上传的文档
+└── .env                        # 环境变量
+```
+
+> 说明：`data/`、`uploads/` 目录及所有运行时文件路径都由 `app/config.py` 统一管理，
+> 不依赖启动时所在目录；这两类运行时数据均不入库（已在 `.gitignore` 中忽略）。
+
 ## 快速开始
 
 ### 环境要求
@@ -77,5 +105,5 @@ python -m venv venv
 在项目根目录创建 .env 文件，填入 API Key（代码读取的环境变量：LLM_API_KEY、LLM_BASE_URL、LLM_MODEL、EMBEDDING_API_KEY、EMBEDDING_BASE_URL、EMBEDDING_MODEL）
 
 # 5. 启动服务
-.\venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000
+.\venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 

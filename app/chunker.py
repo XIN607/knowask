@@ -89,7 +89,7 @@ def chunk_document(text, max_chars=500, overlap=100):
 
 if __name__ == "__main__":
     import sys
-    from parse_doc import parse_document
+    from .parse_doc import parse_document
 
     if len(sys.argv) < 2:
         print("用法: python chunker.py 文件路径")

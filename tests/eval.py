@@ -1,4 +1,10 @@
-from hybrid_retriever import hybrid_search_with_rerank
+import sys
+from pathlib import Path
+
+# 让本脚本无论从哪个目录运行都能找到项目根目录下的 app 包
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.hybrid_retriever import hybrid_search_with_rerank
 
 # 测试集：每条是 (问题, 期望命中的关键词列表)
 # 关键词只要出现在检索到的片段里就算命中

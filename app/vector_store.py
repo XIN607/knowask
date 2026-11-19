@@ -2,12 +2,10 @@ import os
 import json
 import numpy as np
 import faiss
-from dotenv import load_dotenv
 from openai import OpenAI
-from parse_doc import parse_document
-from chunker import chunk_document
-
-load_dotenv()
+from .parse_doc import parse_document
+from .chunker import chunk_document
+from .config import FAISS_INDEX_PATH, CHUNKS_META_PATH
 
 # 智谱 Embedding 客户端（复用 openai 库，因为智谱 API 是 OpenAI 兼容的）
 embedding_client = OpenAI(
@@ -24,7 +22,7 @@ def get_embedding(text):
     )
     return response.data[0].embedding
 
-def build_index(doc_path,index_path="faiss_index.bin",meta_path="chunks_meta.json"):
+def build_index(doc_path, index_path=FAISS_INDEX_PATH, meta_path=CHUNKS_META_PATH):
     """
     端到端流水线：解析文档->切分-向量化-建立 FAISS 索引-保存到本地
     支持多文档追加：如果已有索引，新文档的片段会追加进去
