@@ -1,6 +1,7 @@
 import jieba
 from rank_bm25 import BM25Okapi
 from .config import CHUNKS_META_PATH
+from .models import SearchResult
 
 def tokenize(text):
     """中文分词：把一段文字切成词语列表"""
@@ -33,14 +34,15 @@ def bm25_search(query,chunks,top_k=3):
     ranked_indices = sorted(range(len(scores)),key=lambda i:scores[i],reverse=True)[:top_k]
 
     results = []
-    for rank,idx in enumerate(ranked_indices,1):
-        results.append({
-            "rank":rank,
-            "score":float(scores[idx]),
-            "heading":chunks[idx]["heading"],
-            "content":chunks[idx]["content"],
-            "idx":idx
-        })
+    for rank, idx in enumerate(ranked_indices, 1):
+        results.append(SearchResult(
+            rank=rank,
+            score=float(scores[idx]),
+            heading=chunks[idx]["heading"],
+            content=chunks[idx]["content"],
+            idx=int(idx),
+            source=chunks[idx].get("source", "未知来源"),
+        ))
     return results
 
 if __name__=="__main__":
@@ -52,6 +54,6 @@ if __name__=="__main__":
     results = bm25_search(query,chunks)
     print(f"问题：{query}\n")
     for r in results:
-        print(f"[第{r['rank']}名 | BM25分数: {r['score']:.4f} | 标题：{r['heading']}]")
-        print(r['content'])
+        print(f"[第{r.rank}名 | BM25分数: {r.score:.4f} | 标题：{r.heading}]")
+        print(r.content)
         print()

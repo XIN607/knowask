@@ -1,76 +1,66 @@
+"""文档入库：解析 → 切分 → 写入 Milvus（向量 + 元数据）→ 更新 BM25 语料。"""
 import os
 import json
-import numpy as np
-import faiss
-from openai import OpenAI
+
+from langchain_core.documents import Document
+
 from .parse_doc import parse_document
 from .chunker import chunk_document
-from .config import FAISS_INDEX_PATH, CHUNKS_META_PATH
+from .config import CHUNKS_META_PATH
+from .milvus_store import add_documents
 
-# 智谱 Embedding 客户端（复用 openai 库，因为智谱 API 是 OpenAI 兼容的）
-embedding_client = OpenAI(
-    api_key = os.getenv("EMBEDDING_API_KEY"),
-    base_url = os.getenv("EMBEDDING_BASE_URL","https://open.bigmodel.cn/api/paas/v4")
-)
-EMBEDDING_MODEL=os.getenv("EMBEDDING_MODEL","embedding-3")
 
-def get_embedding(text):
-    """调用 Embedding API,把一段文本转成向量(一串数字)"""
-    response = embedding_client.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input = text
-    )
-    return response.data[0].embedding
+def build_index(doc_path, meta_path=CHUNKS_META_PATH):
+    """端到端入库流程：解析 → 切分 → 写入 Milvus + 更新 BM25 语料。
 
-def build_index(doc_path, index_path=FAISS_INDEX_PATH, meta_path=CHUNKS_META_PATH):
+    支持多文档追加：新文档的片段会继续累加下标（idx），不会覆盖旧数据。
     """
-    端到端流水线：解析文档->切分-向量化-建立 FAISS 索引-保存到本地
-    支持多文档追加：如果已有索引，新文档的片段会追加进去
-    """
-    # 1.解析文档 + 切分（复用前两步写好的模块）
+    # 1. 解析文档 + 切分
     text = parse_document(doc_path)
     chunks = chunk_document(text)
-    print(f"文档切分为{len(chunks)}个片段")
+    print(f"文档切分为 {len(chunks)} 个片段")
 
-    # 2.加载已有索引（如果存在），没有就新建
+    # 2. 加载已有 BM25 语料（同时用来确定新片段的下标起点）
     try:
-        index = faiss.read_index(index_path)
         with open(meta_path, "r", encoding="utf-8") as f:
             meta = json.load(f)
-        print(f"加载已有索引，当前 {len(meta)} 个片段")
-    except:
-        dim = len(get_embedding("测试"))
-        index = faiss.IndexFlatL2(dim)
+    except (FileNotFoundError, json.JSONDecodeError):
         meta = []
-        print("新建索引")
+    start_idx = len(meta)
 
-    # 3.逐个向量化并追加到索引
-    print("正在向量化...")
-    source_name = os.path.basename(doc_path)  # 只取文件名，不要完整路径
+    # 3. 构造 Document（第 49 课的数据单元）+ 追加到 BM25 语料
+    #    page_content 会被向量化；metadata 不会被向量化，但会作为字段一起存进 Milvus
+    source_name = os.path.basename(doc_path)
+    documents = []
     for i, chunk in enumerate(chunks):
-        vec = get_embedding(chunk.content)
-        index.add(np.array([vec]).astype("float32"))
-        # 元数据里记录来源文件名
+        idx = start_idx + i
         meta.append({
-            "idx": len(meta),
+            "idx": idx,
             "content": chunk.content,
             "heading": chunk.heading,
             "char_count": chunk.char_count,
-            "source": source_name
+            "source": source_name,
         })
-        print(f"  片段{i+1}/{len(chunks)}向量化完成")
+        documents.append(Document(
+            page_content=chunk.content,
+            metadata={"heading": chunk.heading, "source": source_name, "idx": idx},
+        ))
 
-    # 4.保存索引和元数据到本地
-    faiss.write_index(index, index_path)
+    # 4. 更新 BM25 语料（JSON，供关键词检索用）
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
-    print(f"索引已更新，共 {len(meta)} 个片段")
-    return index, meta
+    # 5. 写入 Milvus（向量 + 元数据，第 49 课 add_documents）
+    print("正在向量化并写入 Milvus ...")
+    add_documents(documents)
 
-if __name__=="__main__":
+    print(f"索引已更新，共 {len(meta)} 个片段")
+    return documents
+
+
+if __name__ == "__main__":
     import sys
-    if len(sys.argv)<2:
+    if len(sys.argv) < 2:
         print("用法: python vector_store.py 文件路径")
         sys.exit(1)
     build_index(sys.argv[1])

@@ -5,7 +5,8 @@ openai
 python-dotenv
 pypdf
 python-docx
-faiss-cpu
+langchain-milvus
+langchain-openai
 rank-bm25
 jieba
 requests

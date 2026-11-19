@@ -2,7 +2,6 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import os
-from openai import OpenAI
 from fastapi.responses import FileResponse
 import sqlite3
 from datetime import datetime
@@ -12,10 +11,6 @@ from .config import UPLOAD_DIR, INDEX_HTML, CHAT_HISTORY_DB
 
 app = FastAPI(title="知问 KnowAsk API", version="1.0")
 
-llm_client = OpenAI(
-    api_key=os.getenv("LLM_API_KEY"),
-    base_url=os.getenv("LLM_BASE_URL")
-)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def init_db():
@@ -38,6 +33,7 @@ init_db()
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "message": "知问服务运行中"}
+
 @app.get("/")
 async def read_root():
     return FileResponse(INDEX_HTML)
@@ -68,37 +64,33 @@ class QuestionRequest(BaseModel):
 @app.post("/chat")
 async def chat(request: QuestionRequest):
     from .hybrid_retriever import hybrid_search_with_rerank
+    from .qa_chain import check, stream_answer, REFUSE_TEXT
 
+    # 1. 检索
     contexts = hybrid_search_with_rerank(request.question, top_k=3)
 
-    prompt = "你是一个知识库问答助手。请只根据下面的资料回答用户问题。如果资料里没有相关信息，请回答'根据现有资料无法回答这个问题'。\n\n"
-    for i, ctx in enumerate(contexts, 1):
-        prompt += f"【资料{i}】{ctx['heading']}：{ctx['content']}\n\n"
-    prompt += f"用户问题：{request.question}\n\n回答："
+    # 2. 拒答判断（结构化 found，非流式）
+    result = check(request.question, contexts)
 
-    # 先把用户问题存进数据库
+    # 3. 存用户消息
     conn = sqlite3.connect(CHAT_HISTORY_DB)
     c = conn.cursor()
     c.execute("INSERT INTO messages (role, content) VALUES (?, ?)", ("user", request.question))
     conn.commit()
     conn.close()
 
-    full_answer = ""  # 用来收集完整回答
-
+    # 4. SSE 返回：found=False 直接拒答；found=True 流式回答
     def generate():
-        nonlocal full_answer
-        response = llm_client.chat.completions.create(
-            model=os.getenv("LLM_MODEL"),
-            messages=[{"role": "user", "content": prompt}],
-            stream=True
-        )
-        for chunk in response:
-            if chunk.choices and chunk.choices[0].delta.content:
-                content = chunk.choices[0].delta.content
-                full_answer += content  # 拼接完整回答
-                yield f"data: {content}\n\n"
+        full_answer = ""
+        if not result.found:
+            full_answer = REFUSE_TEXT
+            yield f"data: {full_answer}\n\n"
+        else:
+            for chunk in stream_answer(request.question, contexts):
+                full_answer += chunk
+                yield f"data: {chunk}\n\n"
 
-        # 流式输出完后，把 AI 回答存进数据库
+        # 流式结束后存 AI 回答
         conn = sqlite3.connect(CHAT_HISTORY_DB)
         c = conn.cursor()
         c.execute("INSERT INTO messages (role, content) VALUES (?, ?)", ("ai", full_answer))

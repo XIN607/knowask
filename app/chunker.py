@@ -1,13 +1,6 @@
 import re
-from dataclasses import dataclass
 
-
-@dataclass
-class Chunk:
-    """一个切分片段：结构化存储内容、标题、字符数"""
-    content: str        # 片段正文
-    heading: str        # 所属标题路径，如 "我的测试文档 > 关于我"
-    char_count: int     # 字符数
+from .models import Chunk
 
 
 def split_by_heading(text):
