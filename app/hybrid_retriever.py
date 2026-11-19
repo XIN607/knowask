@@ -5,11 +5,14 @@ RRF 融合与 Rerank 精排用 RunnableLambda 包装，串成一条 LCEL 链。
 """
 import json
 
+from langchain_core.output_parsers import CommaSeparatedListOutputParser
+from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
 
 from .bm25_retriever import bm25_search
 from .rerank import rerank
 from .config import CHUNKS_META_PATH
+from .llm import get_llm
 from .milvus_store import search as milvus_search
 from .models import SearchResult
 
@@ -88,6 +91,38 @@ retrieval_chain = _build_retrieval_chain()
 def hybrid_search_with_rerank(query, top_k=3, candidate_num=10):
     """混合检索入口：返回 SearchResult 列表（内部走 LCEL 检索链）。"""
     return _build_retrieval_chain(top_k=top_k, candidate_num=candidate_num).invoke(query)
+
+
+# 第 32/33 课 CommaSeparatedListOutputParser + 第 57 课多查询思想：
+# 用 LLM 把问题改写成多个角度，分别检索后合并去重，提升召回率
+_rewrite_parser = CommaSeparatedListOutputParser()
+_rewrite_prompt = PromptTemplate(
+    template="""把下面的问题改写成 {num} 个不同角度的查询，用逗号分隔（用于提升检索召回率）。
+
+原始问题：{question}
+
+{format_instructions}""",
+    input_variables=["question", "num"],
+    partial_variables={"format_instructions": _rewrite_parser.get_format_instructions()},
+)
+_rewrite_chain = _rewrite_prompt | get_llm() | _rewrite_parser
+
+
+def multi_query_search(query, top_k=3, num_queries=3):
+    """多查询检索：改写多角度 → 分别检索 → 合并去重 → 按分数取 top_k。"""
+    try:
+        rewritten = _rewrite_chain.invoke({"question": query, "num": num_queries})
+    except Exception:
+        rewritten = []
+    seen = set()
+    results = []
+    for q in [query] + list(rewritten):
+        for r in hybrid_search_with_rerank(q, top_k=top_k):
+            if r.idx not in seen:
+                seen.add(r.idx)
+                results.append(r)
+    results.sort(key=lambda r: r.score, reverse=True)
+    return results[:top_k]
 
 
 if __name__ == "__main__":

@@ -155,6 +155,9 @@
         const uploadInput = document.getElementById('fileInput');
         const uploadStatus = document.getElementById('uploadStatus');
 
+        // 会话 ID：每次进入页面或点"新对话"生成一个新会话
+        let sessionId = 'sess_' + Date.now().toString(36);
+
         // 页面加载时只显示欢迎语，不自动加载历史
         addMessage('ai', '你好！我是知问，你的智能知识库助手。请先上传文档，然后就可以向我提问了。');
 
@@ -176,6 +179,7 @@
         function newChat() {
             chatArea.innerHTML = '';
             addMessage('ai', '开始新对话吧！');
+            sessionId = 'sess_' + Date.now().toString(36);   // 新会话
         }
 
         // 文件上传
@@ -202,7 +206,7 @@
             const resp = await fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: question })
+                body: JSON.stringify({ question: question, session_id: sessionId })
             });
             const reader = resp.body.getReader();
             const decoder = new TextDecoder();
