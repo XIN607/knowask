@@ -74,8 +74,7 @@ knowask/
 │   ├── rerank.py               # Rerank 精排
 │   ├── qa_chain.py             # 拒答判断 + 流式回答链
 │   └── rag_qa.py               # CLI 问答入口
-├── scripts/                    # 独立演示脚本
-├── tests/                      # 评测脚本（eval.py）与测试文档
+├── tests/                      # pytest 测试（检索 / 拒答 / 多轮）
 ├── static/index.html           # 前端页面（SSE 流式渲染）
 ├── data/                       # 运行时生成：BM25 语料 / 对话历史
 ├── uploads/                    # 上传的文档
@@ -115,7 +114,10 @@ python -m venv venv
 在项目根目录创建 .env 文件，填入 API Key（代码读取的环境变量：
 LLM_API_KEY、LLM_BASE_URL、LLM_MODEL、EMBEDDING_API_KEY、EMBEDDING_BASE_URL、EMBEDDING_MODEL）
 
-# 6. 启动服务
+# 6. 运行测试（可选，需 Milvus 已启动）
+.\venv\Scripts\python.exe -m pytest tests/ -v
+
+# 7. 启动服务
 .\venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 

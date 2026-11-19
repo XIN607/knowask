@@ -10,3 +10,4 @@ langchain-openai
 rank-bm25
 jieba
 requests
+pytest
